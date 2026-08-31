@@ -32,6 +32,12 @@
   eighth of the wheel on every bass transient, so the palette advances with the
   music rather than with a clock.
 
+- The overlay now says which gesture finishes the request. Multi-select shows
+  how to submit and clear, and a paginated request how to page, alongside the
+  hold-to-confirm hint destructive requests already had. The hints follow the
+  configured gesture mapping, so a remapped long press earns no hint rather
+  than a wrong one.
+
 ### Fixed
 
 - `keycap_audio_analyzer_init` cleared only its channels, leaving the beat
