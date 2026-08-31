@@ -3,6 +3,7 @@
 #include "gesture.h"
 #include "lighting.h"
 #include "line_reader.h"
+#include "audio_bands.h"
 
 #include <string.h>
 #include <zephyr/ztest.h>
@@ -273,4 +274,216 @@ ZTEST(protocol, test_line_reader_discards_overlong_command_tail)
 	zassert_equal(push_text(&reader, "BBB\nPING\n"), KEYCAP_LINE_READY,
 		      "framing resumes at the next newline");
 	zassert_str_equal(reader.line, "PING", "the tail must be discarded");
+}
+
+/* Fill a frame with a square wave of the given period, in samples. */
+static void make_tone(int16_t *samples, size_t count, size_t period, int16_t amplitude)
+{
+	for (size_t i = 0; i < count; ++i) {
+		samples[i] = ((i / (period / 2u)) % 2u) ? amplitude : (int16_t)-amplitude;
+	}
+}
+
+ZTEST(protocol, test_audio_rejects_dc_offset)
+{
+	struct keycap_audio_filters filters;
+	struct keycap_audio_energy energy;
+	int16_t samples[256];
+
+	keycap_audio_filters_reset(&filters);
+	for (size_t i = 0; i < ARRAY_SIZE(samples); ++i) {
+		samples[i] = 6000;
+	}
+	/* The PDM stream carries a DC offset; left in place it reads as a
+	 * constant loud signal and holds the display open on silence.
+	 */
+	for (int pass = 0; pass < 40; ++pass) {
+		keycap_audio_filters_run(&filters, samples, ARRAY_SIZE(samples), &energy);
+	}
+	zassert_true(energy.overall < 40u, "steady DC is not sound");
+	zassert_true(energy.band[0] < 200u, "and must not register as bass");
+}
+
+ZTEST(protocol, test_audio_measures_amplitude)
+{
+	struct keycap_audio_filters filters;
+	struct keycap_audio_energy energy;
+	int16_t samples[256];
+
+	keycap_audio_filters_reset(&filters);
+	make_tone(samples, ARRAY_SIZE(samples), 64, 8000);
+	for (int pass = 0; pass < 8; ++pass) {
+		keycap_audio_filters_run(&filters, samples, ARRAY_SIZE(samples), &energy);
+	}
+	zassert_true(energy.overall > 7000u && energy.overall < 9000u,
+		     "overall energy should track mean absolute amplitude");
+}
+
+ZTEST(protocol, test_audio_separates_low_and_high_bands)
+{
+	struct keycap_audio_filters filters;
+	struct keycap_audio_energy low;
+	struct keycap_audio_energy high;
+	int16_t samples[256];
+
+	/* 125 Hz at 16 kHz: squarely in the bass band. */
+	keycap_audio_filters_reset(&filters);
+	make_tone(samples, ARRAY_SIZE(samples), 128, 8000);
+	for (int pass = 0; pass < 8; ++pass) {
+		keycap_audio_filters_run(&filters, samples, ARRAY_SIZE(samples), &low);
+	}
+
+	/* Alternating every sample is 8 kHz, the top of the range. */
+	keycap_audio_filters_reset(&filters);
+	make_tone(samples, ARRAY_SIZE(samples), 2, 8000);
+	for (int pass = 0; pass < 8; ++pass) {
+		keycap_audio_filters_run(&filters, samples, ARRAY_SIZE(samples), &high);
+	}
+
+	zassert_true(low.band[0] > low.band[3], "a low tone belongs to the bass key");
+	zassert_true(high.band[3] > high.band[0], "a high tone belongs to the treble key");
+}
+
+ZTEST(protocol, test_audio_bands_normalise_independently)
+{
+	struct keycap_audio_analyzer analyzer;
+	struct keycap_audio_energy energy = {0};
+
+	/* The spectrum moves each key on its own band, unlike the meter's bar. */
+	keycap_audio_analyzer_init(&analyzer);
+	for (int i = 0; i < 40; ++i) {
+		energy.overall = 30u;
+		energy.band[0] = 30u;
+		energy.band[3] = 30u;
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	for (int i = 0; i < 30; ++i) {
+		energy.overall = 4000u;
+		energy.band[0] = 4000u;
+		energy.band[3] = 30u;
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	zassert_true(keycap_audio_analyzer_band(&analyzer, 0) > 200u,
+		     "a loud bass band should light its own key");
+	zassert_equal(keycap_audio_analyzer_band(&analyzer, 3), 0,
+		      "a silent treble band should leave its key dark");
+}
+
+ZTEST(protocol, test_audio_fills_the_keys_as_one_bar)
+{
+	/* Each key completes before the next begins: louder sound lights more
+	 * keys, never different ones.
+	 */
+	zassert_equal(keycap_audio_key_fill(0, 0), 0, "silence leaves the bar empty");
+	zassert_equal(keycap_audio_key_fill(64, 0), 255, "a quarter fills the first key");
+	zassert_equal(keycap_audio_key_fill(128, 1), 255, "a half fills the second key");
+	zassert_equal(keycap_audio_key_fill(255, 3), 255, "peak fills every key");
+
+	for (uint16_t level = 0; level <= 255u; ++level) {
+		for (uint8_t key = 1; key < KEYCAP_LED_COUNT; ++key) {
+			if (keycap_audio_key_fill((uint8_t)level, key) > 0u) {
+				zassert_equal(
+					keycap_audio_key_fill((uint8_t)level, key - 1u), 255,
+					"a key may only light once the one below is full");
+			}
+		}
+	}
+}
+
+ZTEST(protocol, test_audio_normalises_against_its_own_range)
+{
+	struct keycap_audio_analyzer analyzer;
+
+	struct keycap_audio_energy energy = {0};
+
+	keycap_audio_analyzer_init(&analyzer);
+	for (int i = 0; i < 60; ++i) {
+		energy.overall = 20u;
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	zassert_equal(keycap_audio_analyzer_level(&analyzer), 0,
+		      "room noise must not drive the meter");
+
+	for (int i = 0; i < 30; ++i) {
+		energy.overall = 6000u;
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	zassert_true(keycap_audio_analyzer_level(&analyzer) > 220u,
+		     "music should reach the top of the bar");
+}
+
+ZTEST(protocol, test_audio_release_is_eased_not_instant)
+{
+	struct keycap_audio_analyzer analyzer;
+
+	struct keycap_audio_energy energy = {0};
+
+	keycap_audio_analyzer_init(&analyzer);
+	for (int i = 0; i < 30; ++i) {
+		energy.overall = 6000u;
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	uint8_t peak = keycap_audio_analyzer_level(&analyzer);
+
+	energy.overall = 30u;
+	keycap_audio_analyzer_update(&analyzer, &energy);
+	uint8_t after = keycap_audio_analyzer_level(&analyzer);
+	zassert_true(after < peak, "the meter must fall");
+	zassert_true(after > peak / 2u, "but not collapse in a single frame");
+}
+
+/* Run the analyser until its channels settle, then read the hue. */
+static uint8_t settle_pitch(struct keycap_audio_analyzer *analyzer, uint32_t low,
+			    uint32_t low_mid, uint32_t high_mid, uint32_t high,
+			    int frames)
+{
+	struct keycap_audio_energy energy = {0};
+
+	for (int i = 0; i < frames; ++i) {
+		energy.overall = (low + low_mid + high_mid + high) / 4u;
+		energy.band[0] = low;
+		energy.band[1] = low_mid;
+		energy.band[2] = high_mid;
+		energy.band[3] = high;
+		keycap_audio_analyzer_update(analyzer, &energy);
+	}
+	return keycap_audio_analyzer_pitch(analyzer);
+}
+
+ZTEST(protocol, test_pitch_colour_follows_the_spectrum)
+{
+	struct keycap_audio_analyzer analyzer;
+
+	keycap_audio_analyzer_init(&analyzer);
+	settle_pitch(&analyzer, 500, 500, 500, 500, 60);
+	uint8_t bass = settle_pitch(&analyzer, 9000, 400, 300, 200, 120);
+
+	keycap_audio_analyzer_init(&analyzer);
+	settle_pitch(&analyzer, 500, 500, 500, 500, 60);
+	uint8_t mid = settle_pitch(&analyzer, 300, 9000, 8000, 300, 120);
+
+	keycap_audio_analyzer_init(&analyzer);
+	settle_pitch(&analyzer, 500, 500, 500, 500, 60);
+	uint8_t treble = settle_pitch(&analyzer, 200, 300, 400, 9000, 120);
+
+	/* Red through green to violet as the energy climbs the spectrum. */
+	zassert_true(bass < mid, "bass should sit warmer than mids");
+	zassert_true(mid < treble, "treble should sit cooler than mids");
+	zassert_true(bass < 45u, "bass belongs at the red end, not merely warm");
+	zassert_true(treble > 140u, "treble belongs at the violet end");
+}
+
+ZTEST(protocol, test_pitch_colour_holds_through_silence)
+{
+	struct keycap_audio_analyzer analyzer;
+
+	keycap_audio_analyzer_init(&analyzer);
+	settle_pitch(&analyzer, 200, 300, 400, 9000, 120);
+	uint8_t before = keycap_audio_analyzer_pitch(&analyzer);
+
+	/* Silence carries no spectrum, so the colour must hold rather than snap
+	 * back to red between tracks.
+	 */
+	uint8_t after = settle_pitch(&analyzer, 0, 0, 0, 0, 40);
+	zassert_equal(after, before, "silence must not reset the hue");
 }

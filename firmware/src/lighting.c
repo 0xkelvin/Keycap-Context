@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "lighting.h"
+#include "audio_bands.h"
 
 #include <string.h>
 
@@ -105,6 +106,12 @@ void keycap_lighting_render(const struct keycap_lighting_profile *profile,
 			color = profile->key_colors[index];
 			break;
 		case KEYCAP_LIGHTING_OFF:
+		case KEYCAP_LIGHTING_AUDIO:
+		case KEYCAP_LIGHTING_SPECTRUM:
+		case KEYCAP_LIGHTING_PITCH:
+			/* Audio is rendered by keycap_audio_render, which needs the
+			 * band levels this entry point does not carry.
+			 */
 			color = (struct keycap_rgb){0};
 			break;
 		}
@@ -153,5 +160,86 @@ void keycap_agent_render(const enum keycap_agent_state states[KEYCAP_LED_COUNT],
 			intensity = 100u;
 		}
 		colors[index] = scale_color(color, intensity);
+	}
+}
+
+void keycap_audio_render(const struct keycap_lighting_profile *profile,
+			 uint8_t level, uint8_t pressed_mask, uint32_t uptime_ms,
+			 struct keycap_rgb colors[KEYCAP_LED_COUNT])
+{
+	/* One hue for the whole bar, cycling at the same rate the plain rainbow
+	 * effect uses, so the Speed slider means the same thing in both.
+	 */
+	uint8_t phase = (uint8_t)(((uint64_t)uptime_ms * profile->speed) / 1200u);
+	struct keycap_rgb hue = color_wheel(phase);
+
+	memset(colors, 0, sizeof(struct keycap_rgb) * KEYCAP_LED_COUNT);
+	if (profile->brightness == 0u) {
+		return;
+	}
+
+	for (uint8_t index = 0; index < KEYCAP_LED_COUNT; ++index) {
+		uint16_t fill = keycap_audio_key_fill(level, index);
+
+		if (index == 0u && fill < KEYCAP_AUDIO_EMBER) {
+			/* Silence still shows a low ember on the first key rather
+			 * than going dark, which would read as a fault.
+			 */
+			fill = KEYCAP_AUDIO_EMBER;
+		}
+		if ((pressed_mask & (1u << index)) != 0u) {
+			fill = 255u;
+		}
+
+		uint8_t intensity = (uint8_t)((uint16_t)profile->brightness * fill / 255u);
+		colors[index] = scale_color(hue, intensity);
+	}
+}
+
+void keycap_spectrum_render(const struct keycap_lighting_profile *profile,
+			    const uint8_t levels[KEYCAP_LED_COUNT], uint8_t pressed_mask,
+			    struct keycap_rgb colors[KEYCAP_LED_COUNT])
+{
+	memset(colors, 0, sizeof(struct keycap_rgb) * KEYCAP_LED_COUNT);
+	if (profile->brightness == 0u) {
+		return;
+	}
+
+	for (uint8_t index = 0; index < KEYCAP_LED_COUNT; ++index) {
+		uint16_t fill = levels[index];
+
+		if (fill < KEYCAP_AUDIO_EMBER) {
+			/* Keep a dim ember so an idle band still shows its colour
+			 * rather than reading as a dead key.
+			 */
+			fill = KEYCAP_AUDIO_EMBER;
+		}
+		if ((pressed_mask & (1u << index)) != 0u) {
+			fill = 255u;
+		}
+
+		uint8_t intensity = (uint8_t)((uint16_t)profile->brightness * fill / 255u);
+		colors[index] = scale_color(profile->key_colors[index], intensity);
+	}
+}
+
+void keycap_pitch_render(const struct keycap_lighting_profile *profile,
+			 uint8_t level, uint8_t pitch, uint8_t pressed_mask,
+			 struct keycap_rgb colors[KEYCAP_LED_COUNT])
+{
+	struct keycap_rgb hue = color_wheel(pitch);
+	uint16_t fill = level < KEYCAP_AUDIO_EMBER ? KEYCAP_AUDIO_EMBER : level;
+
+	memset(colors, 0, sizeof(struct keycap_rgb) * KEYCAP_LED_COUNT);
+	if (profile->brightness == 0u) {
+		return;
+	}
+
+	for (uint8_t index = 0; index < KEYCAP_LED_COUNT; ++index) {
+		uint16_t key_fill = (pressed_mask & (1u << index)) != 0u ? 255u : fill;
+		uint8_t intensity =
+			(uint8_t)((uint16_t)profile->brightness * key_fill / 255u);
+
+		colors[index] = scale_color(hue, intensity);
 	}
 }

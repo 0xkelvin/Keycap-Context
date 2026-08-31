@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Added
+
+- Added an `AUDIO` lighting effect: the four keys become one level meter driven
+  by the board's PDM microphone, sharing a single colour that cycles the rainbow
+  at the profile speed. Loudness fills the keys in order, normalised against a
+  rolling noise floor so the whole bar is used at any volume, with an immediate
+  rise, an eased fall, and a dim ember left on the first key in silence.
+  Analysis runs entirely on the device; no audio or derived measurement crosses
+  the serial link, and the microphone's regulator is switched off whenever
+  neither audio effect is selected.
+- Added a `SPECTRUM` lighting effect sharing the same capture: each key takes
+  its own frequency band and its own colour, bass on key one through treble on
+  key four, with each band normalised independently.
+- Added a `PITCH` lighting effect sharing the same capture: all four keys take
+  one hue from where the sound's energy sits, red for bass through violet for
+  treble, brightening together with loudness. The hue holds through silence
+  rather than resetting between tracks.
+- Raised the NeoKey I2C bus to fast mode, quartering the time the main loop
+  spends blocking on each LED frame.
+
+### Fixed
+
+- An unrecognised lighting effect in the settings file no longer discards every
+  other preference. A strict decoder failed the whole file, so a host without a
+  newer effect silently reverted brightness, colours, gestures and profiles to
+  their defaults.
+
 ### Fixed
 
 - A slow NeoKey/I2C startup no longer leaves all four LEDs stuck on the amber

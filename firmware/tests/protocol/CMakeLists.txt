@@ -8,5 +8,6 @@ target_sources(app PRIVATE
   ../../src/gesture.c
   ../../src/lighting.c
   ../../src/line_reader.c
+  ../../src/audio_bands.c
 )
 target_include_directories(app PRIVATE ../../src)

@@ -4,6 +4,7 @@
 #include "gesture.h"
 #include "lighting.h"
 #include "line_reader.h"
+#include "audio.h"
 
 #include <errno.h>
 #include <string.h>
@@ -332,11 +333,40 @@ int main(void)
 			}
 		}
 
+		/* The microphone is powered only while its effect is selected and the
+		 * standby lane is actually visible. An approval overlay or agent
+		 * status takes the keys back, and the microphone with them.
+		 */
+		bool audio_effect = lighting.mode == KEYCAP_LIGHTING_AUDIO ||
+				    lighting.mode == KEYCAP_LIGHTING_SPECTRUM ||
+				    lighting.mode == KEYCAP_LIGHTING_PITCH;
+		bool wants_audio = audio_effect && !status_active && !agents_active;
+		if (wants_audio != keycap_audio_is_running()) {
+			if (wants_audio) {
+				(void)keycap_audio_start();
+			} else {
+				keycap_audio_stop();
+			}
+		}
 		uint32_t lighting_frame = now / KEYCAP_LIGHTING_FRAME_MS;
 		if (lighting_frame != last_lighting_frame && !status_active) {
 			struct keycap_rgb colors[KEYCAP_LED_COUNT];
 			if (agents_active) {
 				keycap_agent_render(agent_states, stable, now, colors);
+			} else if (audio_effect) {
+				struct keycap_audio_frame frame;
+
+				keycap_audio_get(&frame);
+				if (lighting.mode == KEYCAP_LIGHTING_AUDIO) {
+					keycap_audio_render(&lighting, frame.level, stable,
+							    now, colors);
+				} else if (lighting.mode == KEYCAP_LIGHTING_PITCH) {
+					keycap_pitch_render(&lighting, frame.level,
+							    frame.pitch, stable, colors);
+				} else {
+					keycap_spectrum_render(&lighting, frame.band,
+							       stable, colors);
+				}
 			} else {
 				keycap_lighting_render(&lighting, stable, now, colors);
 			}

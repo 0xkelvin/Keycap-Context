@@ -8,6 +8,8 @@ target_sources(app PRIVATE
   src/gesture.c
   src/lighting.c
   src/line_reader.c
+  src/audio.c
+  src/audio_bands.c
   src/neokey.c
   src/protocol.c
 )

@@ -51,7 +51,7 @@ KEEPALIVE
 LEDS <RRGGBB>,<RRGGBB>,<RRGGBB>,<RRGGBB>
 STATUS <IDLE|SUCCESS|ERROR|PAUSED>
 STATUS WAITING <1..4> [RRGGBB]
-LIGHTING <RAINBOW|WAVE|BREATHING|REACTIVE|STATIC|OFF> <0..100> <1..100> <RRGGBB,RRGGBB,RRGGBB,RRGGBB>
+LIGHTING <RAINBOW|WAVE|BREATHING|REACTIVE|AUDIO|STATIC|OFF> <0..100> <1..100> <RRGGBB,RRGGBB,RRGGBB,RRGGBB>
 AGENTS <EMPTY|IDLE|WORKING|WAITING|DONE|ERROR|RISK>,<state>,<state>,<state>
 ```
 
@@ -107,3 +107,75 @@ supports versions 1 through 3. Version 2 adds gestures and semantic status LEDs;
 version 3 adds four-session agent states. Version 1 retains raw button events
 and explicit `LEDS` commands. Hosts must
 reject an unsupported major version rather than guessing message semantics.
+
+## Audio-reactive lighting
+
+Three effects share one capture from the board's own PDM microphone:
+`LIGHTING AUDIO`, `LIGHTING SPECTRUM` and `LIGHTING PITCH`.
+
+### AUDIO: level meter
+
+`LIGHTING AUDIO` turns the four keys into a single level meter. Analysis happens entirely on the device: the keypad
+reports no audio, no level and no derived measurement to the host. The link
+could not carry it in any case, since 16 kHz mono PCM is roughly 32 kB/s against
+a 11.5 kB/s serial budget.
+
+The command carries no new fields. Every lit key shares one colour that walks
+the rainbow wheel at `speed`, the same rate the `RAINBOW` effect uses.
+`brightness` caps the meter. The four `RRGGBB` values are unused by this effect.
+
+Loudness fills the keys as one bar, so louder sound lights more keys rather than
+different ones:
+
+| Level | Key 1 | Key 2 | Key 3 | Key 4 |
+| --- | --- | --- | --- | --- |
+| silence | dim ember | off | off | off |
+| quiet | rising | off | off | off |
+| moderate | full | rising | off | off |
+| loud | full | full | rising | off |
+| peak | full | full | full | full |
+
+The meter normalises against its own rolling noise floor and peak, so it uses
+the whole bar at any volume while a room's noise floor holds it nearly closed.
+Rise is immediate and the fall is eased over roughly 300 ms, so it reads like a
+VU needle rather than a strobe. Silence leaves the dim ember on the first key,
+still cycling colour, so the device never looks dead.
+
+### SPECTRUM: four bands, four colours
+
+`LIGHTING SPECTRUM` gives each key its own frequency band and its own colour
+from the profile, so the keys move independently and show what the music is made
+of rather than how loud it is. `speed` is unused; `brightness` caps the display.
+
+| Key | Band | Content |
+| --- | --- | --- |
+| 1 | up to ~170 Hz | kick and bass |
+| 2 | ~170-700 Hz | body, low vocals |
+| 3 | ~700 Hz-1.8 kHz | presence |
+| 4 | above ~1.8 kHz | cymbals and air |
+
+Each band normalises against its own floor and peak, so a quiet treble band does
+not sit dark merely because the bass is loud. Every key keeps the same dim ember
+in silence.
+
+### PITCH: colour from content
+
+`LIGHTING PITCH` gives all four keys one hue chosen by where the sound's energy
+sits, and brightens them together with its loudness. Red is bass, green the
+mids, violet the treble, so the colour reflects what the music is made of rather
+than advancing on a timer. `speed` and the key colours are unused;
+`brightness` caps the display.
+
+The hue is a centroid over raw band energy with a fixed tilt, not over the
+normalised band levels: per-band auto-gain drives every band to full whenever it
+is near its own recent maximum, so the normalised levels reach 255 together and
+preserve no balance to take a centroid of. The tilt offsets the steep falloff of
+musical energy with frequency, which would otherwise pin the hue at the bass
+end. Silence holds the last hue rather than snapping back to red.
+
+### Microphone power
+
+The microphone is powered only while `AUDIO`, `SPECTRUM` or `PITCH` is the
+selected effect and the standby lane is visible. Selecting a non-audio effect, an approval overlay, or agent
+status all switch the microphone's regulator off, so an unselected microphone is
+unpowered rather than merely ignored.

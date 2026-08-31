@@ -55,6 +55,11 @@ private struct KeycapSettingsView: View {
                     "Show agent activity instead of the standby effect",
                     isOn: showAgentActivityOnKeys
                 )
+                if let disclosure = microphoneDisclosure {
+                    Text(disclosure)
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             Section("Interaction") {
@@ -109,6 +114,28 @@ private struct KeycapSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+    }
+
+    /// The only place a user can discover that a microphone is involved, so it
+    /// states plainly what is and is not shared.
+    private var microphoneDisclosure: String? {
+        let shared = "Sound is analysed on the keypad and never reaches this Mac "
+            + "or the network. The microphone is powered down whenever another "
+            + "effect is selected. "
+        switch store.preferences.lighting.mode {
+        case .audio:
+            return shared + "Audio Meter fills the keys with one rainbow colour as "
+                + "sound gets louder; Speed sets how fast the colour cycles."
+        case .spectrum:
+            return shared + "Audio Spectrum gives each key its own colour and "
+                + "frequency band, bass on key 1 through treble on key 4."
+        case .pitch:
+            return shared + "Pitch Colour picks one hue from what the music is "
+                + "made of, red for bass through violet for treble, and "
+                + "brightens with its loudness."
+        default:
+            return nil
+        }
     }
 
     private var mode: Binding<LightingMode> { binding(\.lighting.mode) }

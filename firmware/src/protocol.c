@@ -58,7 +58,8 @@ static bool parse_colors(const char *text,
 static bool parse_lighting_mode(const char *text, enum keycap_lighting_mode *mode)
 {
 	static const char *const names[] = {
-		"RAINBOW", "WAVE", "BREATHING", "REACTIVE", "STATIC", "OFF",
+		"RAINBOW", "WAVE", "BREATHING", "REACTIVE", "STATIC", "OFF", "AUDIO",
+		"SPECTRUM", "PITCH",
 	};
 	for (size_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
 		if (strcmp(text, names[index]) == 0) {

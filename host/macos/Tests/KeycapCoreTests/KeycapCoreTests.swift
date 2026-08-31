@@ -254,6 +254,39 @@ final class KeycapCoreTests: XCTestCase {
         XCTAssertFalse(DeviceEvent.error(code: "i2c-write").provesDeviceIsListening)
     }
 
+    func testUnknownLightingModeDoesNotDiscardOtherSettings() throws {
+        // A host without a newer effect must still load the rest of the file.
+        let json = Data(#"""
+            {"mode": "disco", "brightness": 42, "speed": 7,
+             "keyColors": ["112233", "445566", "778899", "AABBCC"]}
+            """#.utf8)
+        let profile = try JSONDecoder().decode(LightingProfile.self, from: json)
+
+        XCTAssertEqual(profile.mode, .rainbow)
+        XCTAssertEqual(profile.brightness, 42)
+        XCTAssertEqual(profile.speed, 7)
+        XCTAssertEqual(profile.keyColors, ["112233", "445566", "778899", "AABBCC"])
+    }
+
+    func testAudioModesAreWireEncodedForTheDevice() {
+        XCTAssertEqual(
+            DeviceProtocolV2.lighting(LightingProfile(mode: .audio, brightness: 93, speed: 85)),
+            "LIGHTING AUDIO 93 85 00FF20,0070FF,DC00FF,FF4800\n"
+        )
+        XCTAssertEqual(
+            DeviceProtocolV2.lighting(LightingProfile(mode: .spectrum, brightness: 70, speed: 50)),
+            "LIGHTING SPECTRUM 70 50 00FF20,0070FF,DC00FF,FF4800\n"
+        )
+        XCTAssertEqual(
+            DeviceProtocolV2.lighting(LightingProfile(mode: .pitch, brightness: 60, speed: 40)),
+            "LIGHTING PITCH 60 40 00FF20,0070FF,DC00FF,FF4800\n"
+        )
+        // Every audio effect must be offered in Settings.
+        for mode in [LightingMode.audio, .spectrum, .pitch] {
+            XCTAssertTrue(LightingMode.allCases.contains(mode), "\(mode) missing")
+        }
+    }
+
     func testParsesButton() {
         XCTAssertEqual(
             DeviceProtocolV1.parse("BUTTON 3 DOWN 42\n"),
