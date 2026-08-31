@@ -49,13 +49,24 @@ jobs:
     container: ghcr.io/zephyrproject-rtos/ci:latest
     env:
       ZEPHYR_TOOLCHAIN_VARIANT: zephyr
-      # Deliberately no ZEPHYR_SDK_INSTALL_DIR: the image registers its own SDK
-      # with CMake, and pinning a path here overrides that with a guess that
-      # goes stale every time the image bumps its SDK version.
     steps:
       - uses: actions/checkout@v4
         with:
           path: keycap-context
+      - name: Locate the Zephyr SDK
+        # The image registers its SDK in CMake's package registry under the
+        # image's own HOME, which is not the HOME a container job runs with, so
+        # the registry lookup misses it. Find the SDK instead of hardcoding a
+        # version that goes stale on the next image bump.
+        run: |
+          sdk=$(find /opt /usr/local "$HOME" -maxdepth 3 -type d \
+                     -name 'zephyr-sdk-*' 2>/dev/null | sort -V | tail -1)
+          if [ -z "$sdk" ]; then
+            echo "No Zephyr SDK in the container image" >&2
+            exit 1
+          fi
+          echo "Using SDK at $sdk"
+          echo "ZEPHYR_SDK_INSTALL_DIR=$sdk" >> "$GITHUB_ENV"
       - name: Initialize a Zephyr workspace
         run: |
           west init -m https://github.com/zephyrproject-rtos/zephyr --mr main workspace
