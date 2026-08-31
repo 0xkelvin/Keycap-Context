@@ -6,7 +6,9 @@ on:
 
 jobs:
   host:
-    runs-on: macos-14
+    # Package.swift declares swift-tools-version 6.0; macos-14 images ship
+    # Swift 5.10 and refuse to load the manifest.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Swift tests
@@ -47,7 +49,9 @@ jobs:
     container: ghcr.io/zephyrproject-rtos/ci:latest
     env:
       ZEPHYR_TOOLCHAIN_VARIANT: zephyr
-      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.0
+      # Deliberately no ZEPHYR_SDK_INSTALL_DIR: the image registers its own SDK
+      # with CMake, and pinning a path here overrides that with a guess that
+      # goes stale every time the image bumps its SDK version.
     steps:
       - uses: actions/checkout@v4
         with:
