@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  host:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift tests
+        working-directory: host/macos
+        run: swift test
+
+  adapters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Shared client tests
+        run: python -m unittest discover -s adapters/shared/tests -v
+      - name: Claude adapter tests
+        run: python -m unittest discover -s adapters/claude/tests -v
+      - name: Codex adapter tests
+        run: python -m unittest discover -s adapters/codex/tests -v
+      - name: Gemini adapter tests
+        run: python -m unittest discover -s adapters/gemini/tests -v
+      - name: Antigravity adapter tests
+        run: python -m unittest discover -s adapters/antigravity/tests -v
+      - name: Syntax check
+        run: >-
+          python -m py_compile
+          adapters/shared/keycap_client.py
+          adapters/claude/keycap_hook.py
+          adapters/codex/keycap_hook.py
+          adapters/codex/app_server_adapter.py
+          adapters/codex/app_server_bridge.py
+          adapters/gemini/keycap_hook.py
+          adapters/generic/stdin_adapter.py
+          adapters/antigravity/keycap_hook.py
+
+  firmware:
+    runs-on: ubuntu-latest
+    container: ghcr.io/zephyrproject-rtos/ci:latest
+    env:
+      ZEPHYR_TOOLCHAIN_VARIANT: zephyr
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: keycap-context
+      - name: Initialize a Zephyr workspace
+        run: |
+          west init -m https://github.com/zephyrproject-rtos/zephyr --mr main workspace
+          cd workspace && west update --narrow -o=--depth=1
+      - name: Protocol and framing ztests
+        working-directory: workspace
+        run: west twister -T ../keycap-context/firmware/tests -p native_sim --inline-logs

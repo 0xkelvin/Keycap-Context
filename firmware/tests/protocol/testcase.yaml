@@ -1,0 +1,7 @@
+tests:
+  keycap.protocol:
+    tags: keycap protocol
+    platform_allow:
+      - native_sim
+      - qemu_cortex_m3
+    harness: ztest

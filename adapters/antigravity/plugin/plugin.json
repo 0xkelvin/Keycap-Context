@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "keycap-context",
+  "description": "Route Antigravity agent approvals and activity to Keycap Context."
+}

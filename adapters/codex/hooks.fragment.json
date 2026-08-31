@@ -1,0 +1,18 @@
+{
+  "description": "Route Codex approval prompts to Keycap Context.",
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /ABSOLUTE/PATH/TO/adapters/codex/keycap_hook.py",
+            "timeout": 3600,
+            "statusMessage": "Waiting for Keycap Context"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+.build*/
+build*/
+dist/
+tmp/
+twister-out/
+.DS_Store
+*.xcuserstate
+__pycache__/
+*.pyc

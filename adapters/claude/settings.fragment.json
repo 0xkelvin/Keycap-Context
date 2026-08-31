@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /ABSOLUTE/PATH/TO/adapters/claude/keycap_hook.py",
+            "timeout": 3600,
+            "statusMessage": "Waiting for Keycap Context"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /ABSOLUTE/PATH/TO/adapters/claude/keycap_hook.py",
+            "timeout": 3600,
+            "statusMessage": "Waiting for Keycap Context"
+          }
+        ]
+      }
+      ,
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /ABSOLUTE/PATH/TO/adapters/claude/keycap_hook.py",
+            "timeout": 3600,
+            "statusMessage": "Waiting for Keycap Context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /ABSOLUTE/PATH/TO/adapters/claude/keycap_hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}

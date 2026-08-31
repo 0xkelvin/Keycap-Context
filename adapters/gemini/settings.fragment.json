@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "BeforeTool": [{
+      "matcher": ".*",
+      "sequential": true,
+      "hooks": [{
+        "type": "command",
+        "name": "Keycap Context approval",
+        "command": "python3 /ABSOLUTE/PATH/TO/adapters/gemini/keycap_hook.py",
+        "timeout": 3600000
+      }]
+    }],
+    "SessionEnd": [{
+      "hooks": [{
+        "type": "command",
+        "name": "Keycap Context cleanup",
+        "command": "python3 /ABSOLUTE/PATH/TO/adapters/gemini/keycap_hook.py"
+      }]
+    }]
+  }
+}

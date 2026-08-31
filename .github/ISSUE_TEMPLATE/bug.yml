@@ -1,0 +1,21 @@
+name: Bug report
+description: Report reproducible host, firmware, or adapter behavior
+body:
+  - type: dropdown
+    attributes:
+      label: Component
+      options: [macOS host, Firmware, Claude adapter, Codex adapter, Installer]
+    validations: {required: true}
+  - type: input
+    attributes: {label: Version or commit}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Reproduction steps}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Expected and actual behavior}
+    validations: {required: true}
+  - type: textarea
+    attributes:
+      label: Sanitized diagnostics
+      description: Remove prompts, paths, tokens, and other sensitive data.

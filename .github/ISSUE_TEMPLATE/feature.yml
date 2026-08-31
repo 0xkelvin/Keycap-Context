@@ -1,0 +1,13 @@
+name: Feature request
+description: Suggest an improvement to Keycap Context
+body:
+  - type: textarea
+    attributes: {label: Problem to solve}
+    validations: {required: true}
+  - type: textarea
+    attributes: {label: Proposed behavior}
+    validations: {required: true}
+  - type: dropdown
+    attributes:
+      label: Component
+      options: [macOS host, Firmware, Adapter, Hardware, Documentation]

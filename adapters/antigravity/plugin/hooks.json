@@ -1,0 +1,27 @@
+{
+  "keycap-context": {
+    "PreToolUse": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "python3 /ABSOLUTE/PATH/TO/adapters/antigravity/keycap_hook.py pre-tool",
+        "timeout": 3600
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "python3 /ABSOLUTE/PATH/TO/adapters/antigravity/keycap_hook.py post-tool"
+      }]
+    }],
+    "PreInvocation": [{
+      "type": "command",
+      "command": "python3 /ABSOLUTE/PATH/TO/adapters/antigravity/keycap_hook.py pre-invocation"
+    }],
+    "Stop": [{
+      "type": "command",
+      "command": "python3 /ABSOLUTE/PATH/TO/adapters/antigravity/keycap_hook.py stop"
+    }]
+  }
+}
