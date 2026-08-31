@@ -13,6 +13,7 @@ keys.
 - Native macOS menu-bar host, choice overlay, lighting settings, and agent console
 - Adapters for Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, and generic JSON
 - Short, long, and double-press gestures with RGB status and standby effects
+- Three audio-reactive standby effects driven by the board's own microphone
 
 ## Quick start
 
@@ -42,6 +43,16 @@ and [adapter API](docs/http-api.md) for details.
 
 Connect NeoKey `VIN/GND/SDA/SCL` to XIAO `3V3/GND/D4/D5`. Do not power NeoKey
 VIN from both 3V3 and 5V.
+
+## Privacy
+
+The host is local-only and needs no macOS Accessibility permission. Adapters
+reach it over loopback and authenticate with a per-install token.
+
+The optional audio-reactive effects use the keypad's own microphone. Sound is
+turned into four band levels on the device and drives its LEDs directly: no
+audio and no derived measurement crosses the USB link, and the microphone is
+left unpowered whenever another effect is selected. See [SECURITY.md](SECURITY.md).
 
 ## License
 

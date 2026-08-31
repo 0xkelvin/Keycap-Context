@@ -6,8 +6,21 @@ public enum LightingMode: String, Codable, CaseIterable, Sendable {
     case wave
     case breathing
     case reactive
+    case audio
+    case spectrum
+    case pitch
     case staticColor = "static"
     case off
+
+    /// Decode leniently so one unrecognised effect cannot discard the whole
+    /// preferences file. A strict decoder throws, `AppPreferences` decoding
+    /// fails with it, and every unrelated setting silently reverts to its
+    /// default -- which is what a downgrade to a host without this effect would
+    /// otherwise do.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = LightingMode(rawValue: raw) ?? .rainbow
+    }
 
     public var displayName: String {
         switch self {
@@ -15,6 +28,9 @@ public enum LightingMode: String, Codable, CaseIterable, Sendable {
         case .wave: return "Color Wave"
         case .breathing: return "Breathing"
         case .reactive: return "Reactive"
+        case .audio: return "Audio Meter"
+        case .spectrum: return "Audio Spectrum"
+        case .pitch: return "Pitch Colour"
         case .staticColor: return "Static"
         case .off: return "Off"
         }

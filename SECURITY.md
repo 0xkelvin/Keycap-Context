@@ -13,3 +13,15 @@ carrying browser fetch metadata are rejected. This protects against other local
 accounts and browser pages, but not against an untrusted process already running
 as the same macOS user, which can read that user's token file. Do not use the
 approval surface as a security boundary between processes in one user account.
+
+## Microphone
+
+The optional `Audio Meter`, `Audio Spectrum` and `Pitch Colour` lighting effects use the keypad's on-board PDM
+microphone. Audio is converted to level values on the device and drives its
+LEDs directly. No audio, band level, or derived measurement is sent to the host
+or to any network; the USB serial link carries only the existing protocol.
+
+The microphone's power regulator is enabled only while one of those effects is selected
+and no approval is on screen, and is switched off otherwise, so an unselected
+microphone is unpowered rather than software-muted. The effect is not enabled by
+default.
