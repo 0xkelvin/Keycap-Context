@@ -184,13 +184,23 @@ def ask_user_question(payload: dict[str, Any]) -> dict[str, Any] | None:
                 return None
             answers[text] = labels[choice_id]
 
-    updated_input = dict(tool_input)
-    updated_input["answers"] = answers
+    # The question has already been answered on the keypad, so the tool must not
+    # run. A PreToolUse hook has no documented way to supply a tool result:
+    # "allow" executes the tool regardless of any updatedInput, which asked the
+    # same question again in the terminal and discarded the keypad answer. Deny
+    # is the only decision that stops execution, and its reason is the one
+    # channel that carries text back, so the answers travel in it.
+    transcript = "\n".join(f"- {question}: {answer}" for question, answer in answers.items())
     return {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "updatedInput": updated_input,
+            "permissionDecision": "deny",
+            "permissionDecisionReason": (
+                "Answered on the Keycap Context keypad, so AskUserQuestion was "
+                "not run. These are the user's answers; treat them exactly as if "
+                "the tool had returned them and continue without asking again:\n"
+                f"{transcript}"
+            ),
         }
     }
 

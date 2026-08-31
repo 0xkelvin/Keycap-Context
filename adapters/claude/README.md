@@ -32,3 +32,15 @@ with any hooks already configured.
 Single-choice, multi-select, and batches of several questions are supported.
 Multi-select uses an explicit Submit button in the overlay; protocol-v2 hardware
 uses a long press on key 4 to submit.
+
+## Why answered questions are denied, not allowed
+
+A `PreToolUse` hook cannot hand Claude Code a tool result. `permissionDecision:
+"allow"` runs the tool whatever `updatedInput` says, so answering on the keypad
+and allowing the call made `AskUserQuestion` ask the same question again in the
+terminal and throw the keypad answer away. `deny` is the only decision that
+stops execution, and `permissionDecisionReason` is the only field that carries
+text back, so the answers travel there.
+
+Handing the overlay back still returns nothing at all, which lets Claude Code
+prompt in the terminal as usual.

@@ -277,6 +277,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             agentConsoleWindow.present()
             return
         }
+        // Nothing to raise if it is already in front. Re-activating a frontmost
+        // terminal redraws whatever prompt it is showing, so a run of presses --
+        // which is exactly what an audio effect invites -- reads as that prompt
+        // reappearing over and over.
+        guard !application.isActive else { return }
         // Activating the app leaves its windows on their existing displays and
         // lets macOS raise the most recently used terminal window. Raising all
         // windows is disruptive on multi-monitor desktops.
