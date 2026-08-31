@@ -184,23 +184,23 @@ def ask_user_question(payload: dict[str, Any]) -> dict[str, Any] | None:
                 return None
             answers[text] = labels[choice_id]
 
-    # The question has already been answered on the keypad, so the tool must not
-    # run. A PreToolUse hook has no documented way to supply a tool result:
-    # "allow" executes the tool regardless of any updatedInput, which asked the
-    # same question again in the terminal and discarded the keypad answer. Deny
-    # is the only decision that stops execution, and its reason is the one
-    # channel that carries text back, so the answers travel in it.
-    transcript = "\n".join(f"- {question}: {answer}" for question, answer in answers.items())
+    # Allow the call with the answers filled in. AskUserQuestion honours a
+    # pre-filled "answers" field and returns it without prompting, so the tool
+    # does not ask again in the terminal.
+    #
+    # This was briefly changed to deny, on the reading that "allow" runs the
+    # tool regardless of updatedInput and would therefore re-prompt. Measured
+    # against a live broker, it does not: the tool result arrives in the same
+    # second the keypad resolves the overlay, where a terminal prompt shows up
+    # as a gap of tens of seconds. Deny works too, but Claude Code renders a
+    # blocked call as an error, which reads like a failure to the user.
+    updated_input = dict(tool_input)
+    updated_input["answers"] = answers
     return {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": (
-                "Answered on the Keycap Context keypad, so AskUserQuestion was "
-                "not run. These are the user's answers; treat them exactly as if "
-                "the tool had returned them and continue without asking again:\n"
-                f"{transcript}"
-            ),
+            "permissionDecision": "allow",
+            "updatedInput": updated_input,
         }
     }
 
