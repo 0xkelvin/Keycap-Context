@@ -14,6 +14,8 @@ struct keycap_audio_frame {
 	uint8_t band[KEYCAP_AUDIO_BANDS];
 	/* Colour-wheel position of the sound's current centre of gravity. */
 	uint8_t pitch;
+	/* Nothing has played for long enough to power the microphone down. */
+	bool quiet;
 };
 
 /* Power the microphone and begin analysis. Idempotent.

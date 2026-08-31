@@ -14,6 +14,19 @@
  */
 #define MINIMUM_SPAN 64u
 
+/* Dynamic range, as a multiple of the floor, below which the room counts as
+ * silent for the purpose of sleeping the microphone.
+ *
+ * A ratio rather than a fixed span, because the right absolute threshold
+ * differs by room and by microphone gain: measured here, music holds its peak
+ * around 28 times its floor while a quiet room stays within 1.6 times. The
+ * additive term keeps the test meaningful when both values sit near zero.
+ *
+ * Note the peak cannot simply decay to the floor: a steady tone re-arms it
+ * every frame, so "no sound" is a narrow range, not a vanishing one.
+ */
+#define QUIET_RATIO 2u
+
 /* Colour-wheel span used by the pitch effect: 0 is red, 85 green, 170 blue, so
  * stopping short of a full turn runs red -> green -> blue -> violet without
  * wrapping back to red at the treble end.
@@ -143,6 +156,13 @@ void keycap_audio_analyzer_update(struct keycap_audio_analyzer *analyzer,
 	uint64_t total = 0;
 
 	channel_update(&analyzer->overall, energy->overall);
+	if (analyzer->overall.peak >
+	    analyzer->overall.floor * QUIET_RATIO + MINIMUM_SPAN) {
+		analyzer->quiet_frames = 0u;
+	} else if (analyzer->quiet_frames < KEYCAP_AUDIO_SLEEP_FRAMES) {
+		++analyzer->quiet_frames;
+	}
+
 	for (uint8_t band = 0; band < KEYCAP_AUDIO_BANDS; ++band) {
 		channel_update(&analyzer->band[band], energy->band[band]);
 
@@ -194,6 +214,11 @@ uint8_t keycap_audio_analyzer_band(const struct keycap_audio_analyzer *analyzer,
 uint8_t keycap_audio_analyzer_pitch(const struct keycap_audio_analyzer *analyzer)
 {
 	return analyzer->pitch > 255u ? 255u : (uint8_t)analyzer->pitch;
+}
+
+bool keycap_audio_analyzer_is_quiet(const struct keycap_audio_analyzer *analyzer)
+{
+	return analyzer->quiet_frames >= KEYCAP_AUDIO_SLEEP_FRAMES;
 }
 
 uint8_t keycap_audio_key_fill(uint8_t level, uint8_t key)

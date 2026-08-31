@@ -33,6 +33,11 @@ RING_BUF_DECLARE(serial_rx, 512);
 static volatile bool serial_rx_overflow;
 static struct keycap_line_reader line_reader;
 
+/* Set once the microphone has been powered down for want of anything to
+ * listen to. Cleared by a key press or by the host changing the lighting.
+ */
+static bool audio_asleep;
+
 /* Kept visible for probe-based bring-up and field diagnostics.
  *
  * When the console does not come up there is no way to report a fault, so
@@ -185,6 +190,8 @@ static bool process_line(struct neokey *keys, bool keys_ready,
 		}
 	} else if (command.type == KEYCAP_COMMAND_LIGHTING) {
 		*lighting = command.lighting;
+		/* Choosing an effect is an explicit request to listen again. */
+		audio_asleep = false;
 	} else if (command.type == KEYCAP_COMMAND_AGENTS) {
 		memcpy(agents, command.agents, sizeof(command.agents));
 		*agents_active = true;
@@ -340,7 +347,16 @@ int main(void)
 		bool audio_effect = lighting.mode == KEYCAP_LIGHTING_AUDIO ||
 				    lighting.mode == KEYCAP_LIGHTING_SPECTRUM ||
 				    lighting.mode == KEYCAP_LIGHTING_PITCH;
-		bool wants_audio = audio_effect && !status_active && !agents_active;
+
+		/* Touching the keypad is the wake gesture. The microphone is off
+		 * while asleep, so it cannot hear its own way back.
+		 */
+		if (audio_asleep && stable != 0u) {
+			audio_asleep = false;
+		}
+
+		bool wants_audio = audio_effect && !status_active && !agents_active &&
+				   !audio_asleep;
 		if (wants_audio != keycap_audio_is_running()) {
 			if (wants_audio) {
 				(void)keycap_audio_start();
@@ -353,10 +369,25 @@ int main(void)
 			struct keycap_rgb colors[KEYCAP_LED_COUNT];
 			if (agents_active) {
 				keycap_agent_render(agent_states, stable, now, colors);
+			} else if (audio_effect && audio_asleep) {
+				/* Nothing to visualise and no microphone running, so
+				 * show a plain dim standby rather than a dark keypad.
+				 */
+				struct keycap_lighting_profile standby = lighting;
+
+				standby.mode = KEYCAP_LIGHTING_RAINBOW;
+				standby.brightness = lighting.brightness / 4u;
+				keycap_lighting_render(&standby, stable, now, colors);
 			} else if (audio_effect) {
 				struct keycap_audio_frame frame;
 
 				keycap_audio_get(&frame);
+				if (frame.quiet) {
+					/* Silent long enough that holding the microphone
+					 * powered serves no one. Sleep until touched.
+					 */
+					audio_asleep = true;
+				}
 				if (lighting.mode == KEYCAP_LIGHTING_AUDIO) {
 					keycap_audio_render(&lighting, frame.level, stable,
 							    now, colors);

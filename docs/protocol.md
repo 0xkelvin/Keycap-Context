@@ -176,6 +176,16 @@ end. Silence holds the last hue rather than snapping back to red.
 ### Microphone power
 
 The microphone is powered only while `AUDIO`, `SPECTRUM` or `PITCH` is the
-selected effect and the standby lane is visible. Selecting a non-audio effect, an approval overlay, or agent
+selected effect and the standby lane is visible, and only while there is
+something to listen to: after about ten minutes with no dynamic range in the
+signal the device powers the regulator down, falls back to a dim standby
+effect, and waits. Pressing any key wakes it, as does a fresh `LIGHTING`
+command. A selected effect therefore holds the microphone live when music is
+playing rather than for as long as the keypad is switched on.
+
+Silence is judged as a ratio, not an absolute level: music holds its peak many
+times its noise floor while a room's own noise stays within a factor of two of
+it. A fixed threshold would never fire in one room and fire constantly in
+another. Selecting a non-audio effect, an approval overlay, or agent
 status all switch the microphone's regulator off, so an unselected microphone is
 unpowered rather than merely ignored.

@@ -21,7 +21,12 @@ microphone. Audio is converted to level values on the device and drives its
 LEDs directly. No audio, band level, or derived measurement is sent to the host
 or to any network; the USB serial link carries only the existing protocol.
 
-The microphone's power regulator is enabled only while one of those effects is selected
-and no approval is on screen, and is switched off otherwise, so an unselected
-microphone is unpowered rather than software-muted. The effect is not enabled by
-default.
+The microphone's power regulator is enabled only while one of those effects is
+selected and no approval is on screen, and is switched off otherwise, so an
+unselected microphone is unpowered rather than software-muted. The effect is not
+enabled by default.
+
+The regulator is also switched off after roughly ten minutes with nothing
+playing, and the keypad waits for a key press before listening again. Selecting
+an audio effect therefore powers the microphone while there is music, not for as
+long as the keypad is switched on.

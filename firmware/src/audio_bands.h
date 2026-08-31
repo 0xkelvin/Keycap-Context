@@ -19,6 +19,15 @@
 /* Level held on an otherwise dark key so the device never looks faulty. */
 #define KEYCAP_AUDIO_EMBER 16u
 
+/* Frames of silence before the microphone is put to sleep. Frames arrive every
+ * 16 ms, so this is about ten minutes.
+ *
+ * A selected effect otherwise holds the microphone powered all day whether or
+ * not anything is playing. Sleeping on silence means it is live when there is
+ * music, not merely when the effect is chosen.
+ */
+#define KEYCAP_AUDIO_SLEEP_FRAMES 37500u
+
 /* A DC blocker and a bank of one-pole low-pass filters.
  *
  * A 256-point FFT was the obvious choice for the spectrum, but four LEDs cannot
@@ -68,6 +77,7 @@ struct keycap_audio_analyzer {
 	struct keycap_audio_channel overall;
 	struct keycap_audio_channel band[KEYCAP_AUDIO_BANDS];
 	uint16_t pitch;
+	uint32_t quiet_frames;
 };
 
 void keycap_audio_analyzer_init(struct keycap_audio_analyzer *analyzer);
@@ -98,6 +108,16 @@ uint8_t keycap_audio_analyzer_band(const struct keycap_audio_analyzer *analyzer,
  * Silence holds the last position rather than snapping back to red.
  */
 uint8_t keycap_audio_analyzer_pitch(const struct keycap_audio_analyzer *analyzer);
+
+/* Whether nothing has been playing for long enough to sleep the microphone.
+ *
+ * Silence is judged by how little dynamic range the overall channel has, as a
+ * ratio rather than an absolute level: every room has its own noise, and a
+ * fixed threshold would either never fire in one room or fire constantly in
+ * another. Music keeps its peak many times its floor; a room's own noise stays
+ * within a factor of two of it.
+ */
+bool keycap_audio_analyzer_is_quiet(const struct keycap_audio_analyzer *analyzer);
 
 /* How brightly one key burns for a given meter level, 0..255.
  *

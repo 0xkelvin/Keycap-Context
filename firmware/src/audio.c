@@ -113,7 +113,8 @@ static void audio_entry(void *a, void *b, void *c)
 		 * one aligned store.
 		 */
 		published_level = keycap_audio_analyzer_level(&analyzer) |
-				  ((uint32_t)keycap_audio_analyzer_pitch(&analyzer) << 8u);
+				  ((uint32_t)keycap_audio_analyzer_pitch(&analyzer) << 8u) |
+				  (keycap_audio_analyzer_is_quiet(&analyzer) ? 1u << 16u : 0u);
 		published_bands = bands;
 		++keycap_audio_frames;
 		k_mem_slab_free(&audio_slab, buffer);
@@ -182,6 +183,7 @@ void keycap_audio_get(struct keycap_audio_frame *frame)
 
 	frame->level = (uint8_t)(level & 0xffu);
 	frame->pitch = (uint8_t)((level >> 8u) & 0xffu);
+	frame->quiet = (level & (1u << 16u)) != 0u;
 	for (uint8_t band = 0; band < KEYCAP_AUDIO_BANDS; ++band) {
 		frame->band[band] = (uint8_t)((bands >> (band * 8u)) & 0xffu);
 	}
