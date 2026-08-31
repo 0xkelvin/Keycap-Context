@@ -28,7 +28,15 @@
   has relative to its own noise floor, so the test does not depend on a room's
   absolute noise level.
 
+- Added a `TEMPO` lighting effect: the level meter with a colour that steps one
+  eighth of the wheel on every bass transient, so the palette advances with the
+  music rather than with a clock.
+
 ### Fixed
+
+- `keycap_audio_analyzer_init` cleared only its channels, leaving the beat
+  count, hue, quiet countdown and bass history holding whatever was previously
+  on the audio thread's stack.
 
 - Answering a question on the keypad no longer asks it again in the terminal.
   The Claude adapter returned `permissionDecision: "allow"` with the answers in

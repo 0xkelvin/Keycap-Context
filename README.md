@@ -13,7 +13,7 @@ keys.
 - Native macOS menu-bar host, choice overlay, lighting settings, and agent console
 - Adapters for Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, and generic JSON
 - Short, long, and double-press gestures with RGB status and standby effects
-- Three audio-reactive standby effects driven by the board's own microphone
+- Four audio-reactive standby effects driven by the board's own microphone
 
 ## Quick start
 

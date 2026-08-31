@@ -53,6 +53,7 @@ enum keycap_lighting_mode {
 	KEYCAP_LIGHTING_AUDIO,
 	KEYCAP_LIGHTING_SPECTRUM,
 	KEYCAP_LIGHTING_PITCH,
+	KEYCAP_LIGHTING_TEMPO,
 };
 
 struct keycap_lighting_profile {

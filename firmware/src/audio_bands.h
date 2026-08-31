@@ -19,6 +19,11 @@
 /* Level held on an otherwise dark key so the device never looks faulty. */
 #define KEYCAP_AUDIO_EMBER 16u
 
+/* Beats per full turn of the colour wheel for the tempo effect. Two bars of
+ * four, so the colour returns to where it started on a musical boundary.
+ */
+#define KEYCAP_TEMPO_BEATS_PER_CYCLE 8u
+
 /* Frames of silence before the microphone is put to sleep. Frames arrive every
  * 16 ms, so this is about ten minutes.
  *
@@ -78,6 +83,10 @@ struct keycap_audio_analyzer {
 	struct keycap_audio_channel band[KEYCAP_AUDIO_BANDS];
 	uint16_t pitch;
 	uint32_t quiet_frames;
+	uint32_t bass_average;
+	uint32_t bass_previous;
+	uint32_t beats;
+	uint8_t beat_hold;
 };
 
 void keycap_audio_analyzer_init(struct keycap_audio_analyzer *analyzer);
@@ -118,6 +127,18 @@ uint8_t keycap_audio_analyzer_pitch(const struct keycap_audio_analyzer *analyzer
  * within a factor of two of it.
  */
 bool keycap_audio_analyzer_is_quiet(const struct keycap_audio_analyzer *analyzer);
+
+/* How many bass transients have been counted since the effect started.
+ *
+ * Measured on raw bass energy against its own rolling average, not on the
+ * normalised level: per-band auto-gain pins a steady loud passage at full
+ * scale, leaving a kick no headroom to stand out in. A transient is a property
+ * of the signal, not of the display mapping.
+ *
+ * The count is what lets a colour advance with the music instead of with a
+ * clock, so a slow track drifts and a fast one races.
+ */
+uint32_t keycap_audio_analyzer_beats(const struct keycap_audio_analyzer *analyzer);
 
 /* How brightly one key burns for a given meter level, 0..255.
  *

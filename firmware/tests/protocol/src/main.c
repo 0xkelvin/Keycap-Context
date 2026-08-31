@@ -537,3 +537,71 @@ ZTEST(protocol, test_microphone_sleeps_only_after_real_silence)
 	zassert_false(keycap_audio_analyzer_is_quiet(&analyzer),
 		      "sound must reset the countdown at once");
 }
+
+static void play_beats(struct keycap_audio_analyzer *analyzer, int kicks, int gap)
+{
+	struct keycap_audio_energy energy = {0};
+
+	for (int kick = 0; kick < kicks; ++kick) {
+		for (int i = 0; i < 3; ++i) {
+			energy.overall = 9000u; energy.band[0] = 9000u;
+			energy.band[1] = 800u; energy.band[2] = 600u; energy.band[3] = 400u;
+			keycap_audio_analyzer_update(analyzer, &energy);
+		}
+		for (int i = 0; i < gap; ++i) {
+			energy.overall = 1200u; energy.band[0] = 1200u;
+			energy.band[1] = 800u; energy.band[2] = 600u; energy.band[3] = 400u;
+			keycap_audio_analyzer_update(analyzer, &energy);
+		}
+	}
+}
+
+ZTEST(protocol, test_beats_count_transients_not_loudness)
+{
+	struct keycap_audio_analyzer analyzer;
+	struct keycap_audio_energy energy = {0};
+
+	keycap_audio_analyzer_init(&analyzer);
+	play_beats(&analyzer, 1, 60);
+	uint32_t before = keycap_audio_analyzer_beats(&analyzer);
+	play_beats(&analyzer, 16, 25);
+	uint32_t counted = keycap_audio_analyzer_beats(&analyzer) - before;
+	zassert_true(counted >= 12u && counted <= 16u,
+		     "a steady kick should be counted once each");
+
+	/* A sustained bass note sits above its own average for as long as it
+	 * lasts, so loudness alone must not count as a beat.
+	 */
+	keycap_audio_analyzer_init(&analyzer);
+	for (int i = 0; i < 600; ++i) {
+		energy.overall = 4000u; energy.band[0] = 4000u;
+		energy.band[1] = 800u; energy.band[2] = 600u; energy.band[3] = 400u;
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	zassert_equal(keycap_audio_analyzer_beats(&analyzer), 0,
+		      "a held bass note is not a run of beats");
+
+	keycap_audio_analyzer_init(&analyzer);
+	for (int i = 0; i < 600; ++i) {
+		memset(&energy, 0, sizeof(energy));
+		keycap_audio_analyzer_update(&analyzer, &energy);
+	}
+	zassert_equal(keycap_audio_analyzer_beats(&analyzer), 0, "silence has no beats");
+}
+
+ZTEST(protocol, test_analyzer_init_clears_every_field)
+{
+	struct keycap_audio_analyzer analyzer;
+
+	/* The analyzer lives on the audio thread's stack, so a partial
+	 * initialiser leaves beats, pitch and the quiet countdown holding
+	 * whatever was there before.
+	 */
+	memset(&analyzer, 0xa5, sizeof(analyzer));
+	keycap_audio_analyzer_init(&analyzer);
+
+	zassert_equal(keycap_audio_analyzer_beats(&analyzer), 0, "beats");
+	zassert_equal(keycap_audio_analyzer_pitch(&analyzer), 0, "pitch");
+	zassert_equal(keycap_audio_analyzer_level(&analyzer), 0, "level");
+	zassert_false(keycap_audio_analyzer_is_quiet(&analyzer), "quiet countdown");
+}

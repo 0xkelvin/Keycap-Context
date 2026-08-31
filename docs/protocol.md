@@ -110,8 +110,8 @@ reject an unsupported major version rather than guessing message semantics.
 
 ## Audio-reactive lighting
 
-Three effects share one capture from the board's own PDM microphone:
-`LIGHTING AUDIO`, `LIGHTING SPECTRUM` and `LIGHTING PITCH`.
+Four effects share one capture from the board's own PDM microphone:
+`LIGHTING AUDIO`, `LIGHTING SPECTRUM`, `LIGHTING PITCH` and `LIGHTING TEMPO`.
 
 ### AUDIO: level meter
 
@@ -173,9 +173,24 @@ preserve no balance to take a centroid of. The tilt offsets the steep falloff of
 musical energy with frequency, which would otherwise pin the hue at the bass
 end. Silence holds the last hue rather than snapping back to red.
 
+### TEMPO: colour that advances with the beat
+
+`LIGHTING TEMPO` fills the keys with loudness exactly as `AUDIO` does, but takes
+its hue from the beat count rather than the clock, stepping one eighth of the
+wheel on every bass transient. A full turn is eight beats, two bars of four, so
+the colour returns to where it started on a musical boundary and a slow track
+drifts where a fast one races. `speed` and the key colours are unused.
+
+A beat is bass that is clear of its own noise floor, above its own rolling
+average, **and rising against the previous frame**. The rise is what separates a
+transient from mere loudness: a sustained bass note sits above its average for
+as long as it lasts and would otherwise retrigger on every frame. Beats are
+measured on raw band energy, since per-band auto-gain pins a loud passage at
+full scale and leaves a kick no headroom to stand out in.
+
 ### Microphone power
 
-The microphone is powered only while `AUDIO`, `SPECTRUM` or `PITCH` is the
+The microphone is powered only while `AUDIO`, `SPECTRUM`, `PITCH` or `TEMPO` is the
 selected effect and the standby lane is visible, and only while there is
 something to listen to: after about ten minutes with no dynamic range in the
 signal the device powers the regulator down, falls back to a dim standby

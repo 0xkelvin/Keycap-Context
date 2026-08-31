@@ -109,6 +109,7 @@ void keycap_lighting_render(const struct keycap_lighting_profile *profile,
 		case KEYCAP_LIGHTING_AUDIO:
 		case KEYCAP_LIGHTING_SPECTRUM:
 		case KEYCAP_LIGHTING_PITCH:
+		case KEYCAP_LIGHTING_TEMPO:
 			/* Audio is rendered by keycap_audio_render, which needs the
 			 * band levels this entry point does not carry.
 			 */
@@ -241,5 +242,37 @@ void keycap_pitch_render(const struct keycap_lighting_profile *profile,
 			(uint8_t)((uint16_t)profile->brightness * key_fill / 255u);
 
 		colors[index] = scale_color(hue, intensity);
+	}
+}
+
+void keycap_tempo_render(const struct keycap_lighting_profile *profile,
+			 uint8_t level, uint32_t beats, uint8_t pressed_mask,
+			 struct keycap_rgb colors[KEYCAP_LED_COUNT])
+{
+	/* A full turn of the wheel every KEYCAP_TEMPO_BEATS_PER_CYCLE beats, so
+	 * the colour lands somewhere recognisable on the bar rather than
+	 * wandering.
+	 */
+	uint8_t hue = (uint8_t)((beats % KEYCAP_TEMPO_BEATS_PER_CYCLE) * 256u /
+				KEYCAP_TEMPO_BEATS_PER_CYCLE);
+	struct keycap_rgb color = color_wheel(hue);
+
+	memset(colors, 0, sizeof(struct keycap_rgb) * KEYCAP_LED_COUNT);
+	if (profile->brightness == 0u) {
+		return;
+	}
+
+	for (uint8_t index = 0; index < KEYCAP_LED_COUNT; ++index) {
+		uint16_t fill = keycap_audio_key_fill(level, index);
+
+		if (index == 0u && fill < KEYCAP_AUDIO_EMBER) {
+			fill = KEYCAP_AUDIO_EMBER;
+		}
+		if ((pressed_mask & (1u << index)) != 0u) {
+			fill = 255u;
+		}
+
+		uint8_t intensity = (uint8_t)((uint16_t)profile->brightness * fill / 255u);
+		colors[index] = scale_color(color, intensity);
 	}
 }

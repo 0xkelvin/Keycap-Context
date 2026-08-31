@@ -27,6 +27,21 @@
  */
 #define QUIET_RATIO 2u
 
+/* A beat is bass rising clear of its own recent average. The ratio is a
+ * compromise: lower and a sustained bassline retriggers constantly, higher and
+ * a soft kick is missed.
+ */
+#define BEAT_RATIO_NUM 7u
+#define BEAT_RATIO_DEN 5u
+#define BEAT_MINIMUM_MARGIN 64u
+/* A beat must also be a rise, as a fraction of the previous frame. Being loud
+ * is not the same as being a transient: a sustained bass note sits above its
+ * own average for as long as it lasts and would otherwise retrigger endlessly.
+ */
+#define BEAT_RISE_SHIFT 2u
+/* Frames a beat stays latched, which also debounces the next one. */
+#define BEAT_HOLD_FRAMES 4u
+
 /* Colour-wheel span used by the pitch effect: 0 is red, 85 green, 170 blue, so
  * stopping short of a full turn runs red -> green -> blue -> violet without
  * wrapping back to red at the treble end.
@@ -143,6 +158,11 @@ static void channel_update(struct keycap_audio_channel *channel, uint32_t energy
 
 void keycap_audio_analyzer_init(struct keycap_audio_analyzer *analyzer)
 {
+	/* Clear the whole struct, not only the channels: the analyzer lives on
+	 * the audio thread's stack, so beats, pitch, the quiet countdown and the
+	 * bass history would otherwise start from whatever was there before.
+	 */
+	memset(analyzer, 0, sizeof(*analyzer));
 	channel_init(&analyzer->overall);
 	for (uint8_t band = 0; band < KEYCAP_AUDIO_BANDS; ++band) {
 		channel_init(&analyzer->band[band]);
@@ -191,6 +211,26 @@ void keycap_audio_analyzer_update(struct keycap_audio_analyzer *analyzer,
 		total += sharpened;
 	}
 
+	uint32_t bass = energy->band[0];
+	uint32_t previous = analyzer->bass_previous;
+	bool clear_of_noise = bass > analyzer->band[0].floor + BEAT_MINIMUM_MARGIN;
+	bool above_average = (uint64_t)bass * BEAT_RATIO_DEN >
+			     (uint64_t)analyzer->bass_average * BEAT_RATIO_NUM;
+	/* Requiring previous > 0 also suppresses a spurious beat on the very
+	 * first frame, when there is no history to rise from.
+	 */
+	bool rising = previous > 0u && bass > previous + (previous >> BEAT_RISE_SHIFT);
+
+	if (analyzer->beat_hold > 0u) {
+		--analyzer->beat_hold;
+	} else if (clear_of_noise && above_average && rising) {
+		analyzer->beat_hold = BEAT_HOLD_FRAMES;
+		++analyzer->beats;
+	}
+	analyzer->bass_previous = bass;
+	analyzer->bass_average +=
+		((int32_t)bass - (int32_t)analyzer->bass_average) / 8;
+
 	if (total > 0u) {
 		uint32_t target = (uint32_t)((weighted * PITCH_MAX_HUE) /
 					     (total * (KEYCAP_AUDIO_BANDS - 1u)));
@@ -219,6 +259,11 @@ uint8_t keycap_audio_analyzer_pitch(const struct keycap_audio_analyzer *analyzer
 bool keycap_audio_analyzer_is_quiet(const struct keycap_audio_analyzer *analyzer)
 {
 	return analyzer->quiet_frames >= KEYCAP_AUDIO_SLEEP_FRAMES;
+}
+
+uint32_t keycap_audio_analyzer_beats(const struct keycap_audio_analyzer *analyzer)
+{
+	return analyzer->beats;
 }
 
 uint8_t keycap_audio_key_fill(uint8_t level, uint8_t key)

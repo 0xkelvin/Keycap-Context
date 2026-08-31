@@ -16,7 +16,8 @@ approval surface as a security boundary between processes in one user account.
 
 ## Microphone
 
-The optional `Audio Meter`, `Audio Spectrum` and `Pitch Colour` lighting effects use the keypad's on-board PDM
+The optional `Audio Meter`, `Audio Spectrum`, `Pitch Colour` and `Tempo Colour`
+lighting effects use the keypad's on-board PDM
 microphone. Audio is converted to level values on the device and drives its
 LEDs directly. No audio, band level, or derived measurement is sent to the host
 or to any network; the USB serial link carries only the existing protocol.

@@ -9,6 +9,7 @@ public enum LightingMode: String, Codable, CaseIterable, Sendable {
     case audio
     case spectrum
     case pitch
+    case tempo
     case staticColor = "static"
     case off
 
@@ -31,6 +32,7 @@ public enum LightingMode: String, Codable, CaseIterable, Sendable {
         case .audio: return "Audio Meter"
         case .spectrum: return "Audio Spectrum"
         case .pitch: return "Pitch Colour"
+        case .tempo: return "Tempo Colour"
         case .staticColor: return "Static"
         case .off: return "Off"
         }
