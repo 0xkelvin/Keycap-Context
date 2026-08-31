@@ -487,3 +487,53 @@ ZTEST(protocol, test_pitch_colour_holds_through_silence)
 	uint8_t after = settle_pitch(&analyzer, 0, 0, 0, 0, 40);
 	zassert_equal(after, before, "silence must not reset the hue");
 }
+
+static void feed_overall(struct keycap_audio_analyzer *analyzer, uint32_t level,
+			 uint32_t frames)
+{
+	struct keycap_audio_energy energy = {0};
+
+	for (uint32_t i = 0; i < frames; ++i) {
+		energy.overall = level;
+		energy.band[0] = level;
+		energy.band[1] = level / 2u;
+		energy.band[2] = level / 3u;
+		energy.band[3] = level / 4u;
+		keycap_audio_analyzer_update(analyzer, &energy);
+	}
+}
+
+ZTEST(protocol, test_microphone_sleeps_only_after_real_silence)
+{
+	struct keycap_audio_analyzer analyzer;
+
+	/* Music keeps its peak far above its floor, so it never sleeps however
+	 * long it plays.
+	 */
+	keycap_audio_analyzer_init(&analyzer);
+	for (int i = 0; i < 400; ++i) {
+		feed_overall(&analyzer, 6000u, 3u);
+		feed_overall(&analyzer, 200u, 3u);
+	}
+	zassert_false(keycap_audio_analyzer_is_quiet(&analyzer),
+		      "music must not put the microphone to sleep");
+
+	/* A gap between tracks is not silence either. */
+	keycap_audio_analyzer_init(&analyzer);
+	feed_overall(&analyzer, 6000u, 60u);
+	feed_overall(&analyzer, 200u, KEYCAP_AUDIO_SLEEP_FRAMES / 4u);
+	zassert_false(keycap_audio_analyzer_is_quiet(&analyzer),
+		      "a short gap must not sleep the microphone");
+
+	/* A room's own noise has almost no dynamic range: sleep. The peak needs
+	 * a few hundred frames to decay before the countdown starts.
+	 */
+	feed_overall(&analyzer, 200u, KEYCAP_AUDIO_SLEEP_FRAMES + 1000u);
+	zassert_true(keycap_audio_analyzer_is_quiet(&analyzer),
+		     "sustained silence should release the microphone");
+
+	/* And sound returning revives it immediately. */
+	feed_overall(&analyzer, 6000u, 5u);
+	zassert_false(keycap_audio_analyzer_is_quiet(&analyzer),
+		      "sound must reset the countdown at once");
+}

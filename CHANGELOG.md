@@ -22,6 +22,12 @@
 - Raised the NeoKey I2C bus to fast mode, quartering the time the main loop
   spends blocking on each LED frame.
 
+- The microphone now sleeps after about ten minutes with nothing playing: the
+  regulator is switched off, the keys fall back to a dim standby effect, and a
+  key press wakes it. Silence is judged by how little dynamic range the signal
+  has relative to its own noise floor, so the test does not depend on a room's
+  absolute noise level.
+
 ### Fixed
 
 - An unrecognised lighting effect in the settings file no longer discards every
