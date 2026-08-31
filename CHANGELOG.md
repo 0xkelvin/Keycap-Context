@@ -38,17 +38,10 @@
   count, hue, quiet countdown and bass history holding whatever was previously
   on the audio thread's stack.
 
-- Answering a question on the keypad no longer asks it again in the terminal.
-  The Claude adapter returned `permissionDecision: "allow"` with the answers in
-  `updatedInput`, but `allow` runs the tool regardless of any input rewriting,
-  so `AskUserQuestion` re-prompted and the keypad answer was discarded. A
-  PreToolUse hook has no documented way to supply a tool result, so the answers
-  now travel in `permissionDecisionReason` alongside `deny`, which is the only
-  decision that stops execution.
 - A short press on an assigned key no longer re-activates its terminal when that
-  terminal is already frontmost. Each activation redraws whatever prompt the
-  terminal is showing, so a run of presses -- exactly what an audio effect
-  invites -- looked like the prompt reappearing over and over.
+  terminal is already frontmost. This was the cause of questions appearing to
+  repeat: each activation redraws whatever prompt the terminal is showing, and
+  an audio effect invites exactly the run of presses that triggers it.
 
 - An unrecognised lighting effect in the settings file no longer discards every
   other preference. A strict decoder failed the whole file, so a host without a
