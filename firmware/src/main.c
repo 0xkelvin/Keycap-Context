@@ -346,7 +346,8 @@ int main(void)
 		 */
 		bool audio_effect = lighting.mode == KEYCAP_LIGHTING_AUDIO ||
 				    lighting.mode == KEYCAP_LIGHTING_SPECTRUM ||
-				    lighting.mode == KEYCAP_LIGHTING_PITCH;
+				    lighting.mode == KEYCAP_LIGHTING_PITCH ||
+				    lighting.mode == KEYCAP_LIGHTING_TEMPO;
 
 		/* Touching the keypad is the wake gesture. The microphone is off
 		 * while asleep, so it cannot hear its own way back.
@@ -391,6 +392,9 @@ int main(void)
 				if (lighting.mode == KEYCAP_LIGHTING_AUDIO) {
 					keycap_audio_render(&lighting, frame.level, stable,
 							    now, colors);
+				} else if (lighting.mode == KEYCAP_LIGHTING_TEMPO) {
+					keycap_tempo_render(&lighting, frame.level,
+							    frame.beats, stable, colors);
 				} else if (lighting.mode == KEYCAP_LIGHTING_PITCH) {
 					keycap_pitch_render(&lighting, frame.level,
 							    frame.pitch, stable, colors);

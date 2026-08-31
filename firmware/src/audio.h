@@ -16,6 +16,10 @@ struct keycap_audio_frame {
 	uint8_t pitch;
 	/* Nothing has played for long enough to power the microphone down. */
 	bool quiet;
+	/* Bass transients counted so far, for effects that advance with the
+	 * music rather than with a clock.
+	 */
+	uint32_t beats;
 };
 
 /* Power the microphone and begin analysis. Idempotent.

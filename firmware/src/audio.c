@@ -32,6 +32,7 @@ static k_tid_t audio_tid;
  */
 static volatile uint32_t published_level;
 static volatile uint32_t published_bands;
+static volatile uint32_t published_beats;
 static volatile bool stop_requested;
 static volatile bool running;
 
@@ -116,6 +117,7 @@ static void audio_entry(void *a, void *b, void *c)
 				  ((uint32_t)keycap_audio_analyzer_pitch(&analyzer) << 8u) |
 				  (keycap_audio_analyzer_is_quiet(&analyzer) ? 1u << 16u : 0u);
 		published_bands = bands;
+		published_beats = keycap_audio_analyzer_beats(&analyzer);
 		++keycap_audio_frames;
 		k_mem_slab_free(&audio_slab, buffer);
 	}
@@ -184,6 +186,7 @@ void keycap_audio_get(struct keycap_audio_frame *frame)
 	frame->level = (uint8_t)(level & 0xffu);
 	frame->pitch = (uint8_t)((level >> 8u) & 0xffu);
 	frame->quiet = (level & (1u << 16u)) != 0u;
+	frame->beats = published_beats;
 	for (uint8_t band = 0; band < KEYCAP_AUDIO_BANDS; ++band) {
 		frame->band[band] = (uint8_t)((bands >> (band * 8u)) & 0xffu);
 	}

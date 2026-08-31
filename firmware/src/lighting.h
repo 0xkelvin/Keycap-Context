@@ -49,4 +49,15 @@ void keycap_pitch_render(const struct keycap_lighting_profile *profile,
 			 uint8_t level, uint8_t pitch, uint8_t pressed_mask,
 			 struct keycap_rgb colors[KEYCAP_LED_COUNT]);
 
+/* Render the level meter with a colour that steps on every beat.
+ *
+ * Identical to keycap_audio_render except for where the hue comes from: the
+ * beat count rather than the clock, so the palette advances with the music. A
+ * slow track drifts and a fast one races, and the keypad visibly knows the
+ * tempo instead of merely reacting to volume.
+ */
+void keycap_tempo_render(const struct keycap_lighting_profile *profile,
+			 uint8_t level, uint32_t beats, uint8_t pressed_mask,
+			 struct keycap_rgb colors[KEYCAP_LED_COUNT]);
+
 #endif

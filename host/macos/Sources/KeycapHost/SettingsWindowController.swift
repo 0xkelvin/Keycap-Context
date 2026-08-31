@@ -129,6 +129,10 @@ private struct KeycapSettingsView: View {
         case .spectrum:
             return shared + "Audio Spectrum gives each key its own colour and "
                 + "frequency band, bass on key 1 through treble on key 4."
+        case .tempo:
+            return shared + "Tempo Colour fills the keys with loudness like the "
+                + "meter, but steps its colour on every beat, so the palette "
+                + "advances with the music instead of with a clock."
         case .pitch:
             return shared + "Pitch Colour picks one hue from what the music is "
                 + "made of, red for bass through violet for treble, and "
