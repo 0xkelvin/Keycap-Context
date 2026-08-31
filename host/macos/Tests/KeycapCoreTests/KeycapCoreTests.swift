@@ -287,6 +287,76 @@ final class KeycapCoreTests: XCTestCase {
         }
     }
 
+    func testGestureHintsTellYouHowToFinish() {
+        // A working overlay that never says how to submit reads as a broken one.
+        let multi = AgentRequest(
+            source: "test", kind: "question", title: "Pick several",
+            choices: (1...3).map { Choice(id: "c\($0)", label: "Choice \($0)") },
+            allowsMultiple: true
+        )
+        var interaction = RequestInteraction(request: multi)
+        XCTAssertEqual(
+            interaction.gestureHints(longPress: "contextual", doublePress: "navigate"),
+            ["HOLD KEY 4 TO SUBMIT"]
+        )
+        _ = interaction.selectVisibleChoice(number: 1)
+        XCTAssertEqual(
+            interaction.gestureHints(longPress: "contextual", doublePress: "navigate"),
+            ["HOLD KEY 4 TO SUBMIT", "HOLD KEY 2 TO CLEAR"]
+        )
+
+        // A remapped long press earns no hint rather than a wrong one.
+        XCTAssertTrue(
+            interaction.gestureHints(longPress: "select", doublePress: "none").isEmpty
+        )
+    }
+
+    func testGestureHintsExplainPaging() {
+        let paged = AgentRequest(
+            source: "test", kind: "question", title: "Six",
+            choices: (1...6).map { Choice(id: "c\($0)", label: "Choice \($0)") }
+        )
+        let interaction = RequestInteraction(request: paged)
+        XCTAssertEqual(
+            interaction.gestureHints(longPress: "contextual", doublePress: "navigate"),
+            ["DOUBLE-PRESS 1 OR 4 TO PAGE"]
+        )
+        XCTAssertEqual(
+            interaction.gestureHints(longPress: "contextual", doublePress: "none"),
+            ["HOLD KEY 1 OR 4 TO PAGE"]
+        )
+    }
+
+    func testDestructiveHintReplacesTheOthers() {
+        let risky = AgentRequest(
+            source: "test", kind: "permission", title: "Delete?",
+            choices: (1...2).map { Choice(id: "c\($0)", label: "Choice \($0)") },
+            risk: .destructive
+        )
+        var interaction = RequestInteraction(request: risky, requiresConfirmation: true)
+        XCTAssertTrue(
+            interaction.gestureHints(longPress: "contextual", doublePress: "navigate").isEmpty,
+            "nothing to confirm until a choice is armed"
+        )
+        _ = interaction.selectVisibleChoice(number: 2)
+        XCTAssertEqual(
+            interaction.gestureHints(longPress: "contextual", doublePress: "navigate"),
+            ["HOLD KEY 2 TO CONFIRM"]
+        )
+    }
+
+    func testGestureHintsStayShortEnoughToRead() {
+        let both = AgentRequest(
+            source: "test", kind: "question", title: "Paged multi-select",
+            choices: (1...8).map { Choice(id: "c\($0)", label: "Choice \($0)") },
+            allowsMultiple: true
+        )
+        var interaction = RequestInteraction(request: both)
+        _ = interaction.selectVisibleChoice(number: 1)
+        let hints = interaction.gestureHints(longPress: "contextual", doublePress: "navigate")
+        XCTAssertEqual(hints.count, 2, "the status line must not become a manual")
+    }
+
     func testParsesButton() {
         XCTAssertEqual(
             DeviceProtocolV1.parse("BUTTON 3 DOWN 42\n"),

@@ -383,11 +383,10 @@ final class OverlayController: NSObject {
         if interaction.allowsMultiple && !interaction.selectedChoiceIDs.isEmpty {
             parts.append("\(interaction.selectedChoiceIDs.count) SELECTED")
         }
-        if interaction.requiresConfirmation,
-           let choiceID = interaction.pendingConfirmationChoiceID,
-           let index = interaction.request.choices.firstIndex(where: { $0.id == choiceID }) {
-            parts.append("HOLD KEY \(index % interaction.pageSize + 1) TO CONFIRM")
-        }
+        parts.append(contentsOf: interaction.gestureHints(
+            longPress: gestureActions[.long] ?? "none",
+            doublePress: gestureActions[.double] ?? "none"
+        ))
         if let deadline {
             let remaining = max(0, Int(ceil(deadline.timeIntervalSinceNow)))
             parts.append("\(remaining)S")

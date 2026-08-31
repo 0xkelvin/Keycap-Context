@@ -117,6 +117,48 @@ public struct RequestInteraction: Equatable, Sendable {
         return .resolved([pendingConfirmationChoiceID!])
     }
 
+    /// Short instructions for the gestures nobody would otherwise discover.
+    ///
+    /// A short press selects, and people find that immediately. Submitting a
+    /// multi-select, clearing it, paging, and confirming a destructive choice
+    /// all need a long or double press that nothing on screen mentions, which
+    /// is how a working overlay comes to look like one that cannot be
+    /// finished. At most two are returned so the status line stays readable.
+    ///
+    /// The gestures are configurable, so the hints are derived from the
+    /// mapping in force rather than assumed: a remapped long press earns no
+    /// hint instead of a wrong one.
+    public func gestureHints(longPress: String, doublePress: String) -> [String] {
+        var hints: [String] = []
+        let contextual = longPress == "contextual"
+
+        if requiresConfirmation {
+            if contextual, let choiceID = pendingConfirmationChoiceID,
+               let index = request.choices.firstIndex(where: { $0.id == choiceID }) {
+                hints.append("HOLD KEY \(index % pageSize + 1) TO CONFIRM")
+            }
+            return hints
+        }
+
+        if allowsMultiple && contextual {
+            hints.append("HOLD KEY 4 TO SUBMIT")
+            if !selectedChoiceIDs.isEmpty {
+                hints.append("HOLD KEY 2 TO CLEAR")
+            }
+        }
+
+        if pageCount > 1 && hints.count < 2 {
+            if doublePress == "navigate" {
+                hints.append("DOUBLE-PRESS 1 OR 4 TO PAGE")
+            } else if contextual && !allowsMultiple {
+                // A multi-select long press on key 4 submits, so it cannot also
+                // page forward; only the double press can.
+                hints.append("HOLD KEY 1 OR 4 TO PAGE")
+            }
+        }
+        return hints
+    }
+
     public func confirmVisibleChoice(number: Int) -> InteractionOutcome {
         let index = pageIndex * pageSize + number - 1
         guard request.choices.indices.contains(index),
