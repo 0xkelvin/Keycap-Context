@@ -7,3 +7,10 @@ twister-out/
 *.xcuserstate
 __pycache__/
 *.pyc
+
+# CAD Viewer render caches, rebuilt whenever a STEP file is opened.
+.*.glb
+
+# Review-only exports (cutaway, exploded, fit-check, internals). Each is ~7 MB
+# and regenerates from the matching cad/keycap_case_*.py source.
+cad/keycap_case_*.step
